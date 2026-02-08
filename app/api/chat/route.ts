@@ -14,6 +14,7 @@ export async function POST(req: Request) {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      "x-webhook-secret": process.env.N8N_WEBHOOK_SECRET || "",
     },
     body: JSON.stringify(body),
   });
