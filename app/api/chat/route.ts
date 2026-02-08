@@ -1,31 +1,44 @@
 import { NextResponse } from "next/server";
 
 export async function POST(req: Request) {
-  if (!process.env.N8N_WEBHOOK_URL) {
-    return NextResponse.json(
-      { error: "N8N_WEBHOOK_URL is not defined" },
-      { status: 500 }
-    );
+  try {
+    const body = await req.json();
+    if (!body.message) return NextResponse.json({ reply: "กรุณาพิมพ์ข้อความ" }, { status: 400 });
+
+    const SESSION_ID = "crm_fixed_session_2026";
+
+    const response = await fetch(process.env.N8N_WEBHOOK_URL!, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        message: body.message,
+        session_id: SESSION_ID,
+      }),
+    });
+
+    // อ่านข้อมูลเป็น Text ก่อนเพื่อเช็คว่ามีค่าไหม
+    const text = await response.text();
+    console.log("RAW FROM N8N:", text);
+
+    if (!text || text.trim() === "") {
+      return NextResponse.json({ reply: "ขออภัยค่ะ ระบบ n8n ไม่ตอบสนองในขณะนี้" });
+    }
+
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch (err) {
+      // ถ้าไม่ใช่ JSON ให้แสดงข้อความตรงๆ
+      return NextResponse.json({ reply: text.substring(0, 100) });
+    }
+
+    // ดึงคำตอบจากทุก Key ที่เป็นไปได้
+    const botReply = data.reply || data.response || data.message || "กำลังประมวลผล...";
+
+    return NextResponse.json({ reply: botReply });
+
+  } catch (error) {
+    console.error("API Error:", error);
+    return NextResponse.json({ reply: "เกิดข้อผิดพลาดในการเชื่อมต่อเครือข่าย" }, { status: 500 });
   }
-
-  const body = await req.json();
-
-  const r = await fetch(process.env.N8N_WEBHOOK_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-webhook-secret": process.env.N8N_WEBHOOK_SECRET || "",
-    },
-    body: JSON.stringify(body),
-  });
-
-  const data = await r.json().catch(() => ({}));
-
-  // 👇 ดูข้อมูลจาก n8n ใน terminal
-  console.log("FROM N8N:", data);
-
-  // 👇 ส่งให้ frontend ใช้ง่าย
-  return NextResponse.json({
-    reply: data.reply ?? "ขออภัย ระบบไม่สามารถตอบได้ในขณะนี้",
-  });
 }

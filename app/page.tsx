@@ -26,7 +26,7 @@ export default function Home() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim()) return;
+    if (!input.trim() || loading) return;
 
     const userMessage: Message = { role: "user", content: input };
     setMessages((prev) => [...prev, userMessage]);
@@ -39,13 +39,19 @@ export default function Home() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: input }),
       });
+
       const data = await res.json();
+
       if (data.reply) {
+        // ล้างอักขระพิเศษถ้ามี และแสดงผล
         const cleanReply = data.reply.replace(/^==/, '');
         setMessages((prev) => [...prev, { role: "assistant", content: cleanReply }]);
+      } else {
+        setMessages((prev) => [...prev, { role: "assistant", content: "ได้รับข้อมูลแล้ว แต่ระบบไม่ได้ส่งคำตอบกลับมาค่ะ" }]);
       }
     } catch (error) {
-      console.error(error);
+      console.error("Frontend Error:", error);
+      setMessages((prev) => [...prev, { role: "assistant", content: "ขออภัยค่ะ เกิดข้อผิดพลาดในการเชื่อมต่อเครือข่าย" }]);
     } finally {
       setLoading(false);
     }
@@ -53,7 +59,6 @@ export default function Home() {
 
   return (
     <main className="flex flex-col h-screen bg-white text-sm md:text-base">
-      {/* Header - ปรับเป็นโทนสีฟ้า */}
       <header className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
@@ -61,29 +66,18 @@ export default function Home() {
         </div>
       </header>
 
-      
-      {/* Chat Area  */}
       <div className="flex-1 overflow-y-auto p-4 md:px-20 space-y-6">
         {messages.map((msg, index) => (
           <div
             key={index}
             className={`flex items-end gap-2 ${msg.role === "user" ? "flex-row-reverse" : "flex-row"}`}
           >
-            {/* 1. ไอคอน */}
-            <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center shadow-sm ${
-              msg.role === "user" ? "bg-pink-200" : "bg-blue-200 animate-bounce-slow"
-            }`}>
-              {msg.role === "user" 
-                ? <User className="w-5 h-5 text-pink-600" /> 
-                : <Bot className="w-5 h-5 text-blue-600" /> /* ไอคอน Bot ในวงกลมฟ้าดูน่ารักขึ้น */}
+            <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center shadow-sm ${msg.role === "user" ? "bg-pink-200" : "bg-blue-200 animate-bounce-slow"
+              }`}>
+              {msg.role === "user" ? <User className="w-5 h-5 text-pink-600" /> : <Bot className="w-5 h-5 text-blue-600" />}
             </div>
 
-            {/* 2. บับเบิลข้อความ */}
-            <div
-              className={`max-w-[75%] px-4 py-2.5 rounded-2xl shadow-sm ${
-                msg.role === "user"
-                  ? "bg-pink-100 text-pink-800 rounded-br-none" // ฝั่งขวาสีชมพู
-                  : "bg-blue-50 text-blue-800 border border-blue-100 rounded-bl-none" // ฝั่งซ้ายสีฟ้า
+            <div className={`max-w-[75%] px-4 py-2.5 rounded-2xl shadow-sm ${msg.role === "user" ? "bg-pink-100 text-pink-800 rounded-br-none" : "bg-blue-50 text-blue-800 border border-blue-100 rounded-bl-none"
               }`}
             >
               {msg.content}
@@ -100,12 +94,8 @@ export default function Home() {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input Area */}
       <div className="p-4 md:pb-8 flex justify-center">
-        <form 
-          onSubmit={handleSubmit} 
-          className="flex gap-2 bg-gray-50 p-1.5 rounded-full border border-gray-200 w-full max-w-md shadow-sm"
-        >
+        <form onSubmit={handleSubmit} className="flex gap-2 bg-gray-50 p-1.5 rounded-full border border-gray-200 w-full max-w-md shadow-sm">
           <input
             type="text"
             value={input}
@@ -113,11 +103,10 @@ export default function Home() {
             placeholder="พิมพ์ข้อความ..."
             className="flex-1 bg-transparent px-4 py-2 focus:outline-none text-gray-700"
           />
-          {/* ปรับปุ่ม Send */}
           <button
             type="submit"
             disabled={loading || !input.trim()}
-            className="p-2 bg-pink-500 text-white rounded-full hover:bg-pink-600 active:scale-90 disabled:bg-gray-200 transition-all shadow-md shadow-pink-100"
+            className="p-2 bg-pink-500 text-white rounded-full hover:bg-pink-600 active:scale-90 disabled:bg-gray-200 transition-all shadow-md"
           >
             <Send className="w-5 h-5" />
           </button>
